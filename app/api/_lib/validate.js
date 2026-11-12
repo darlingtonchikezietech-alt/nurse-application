@@ -8,7 +8,7 @@ export function clean(input, { partial = false } = {}) {
   if (!input || typeof input !== "object" || Array.isArray(input)) return { error: "Body must be a JSON object" };
   const data = {};
   for (const [k, v] of Object.entries(input)) {
-    if (k === "id") continue;
+    if (k === "id" || k === "hasPortalPassword" || k === "portalPasswordSetAt") continue;
     if (FORBIDDEN.some((f) => k.toLowerCase().includes(f.toLowerCase()))) return { error: `Field "${k}" is not allowed (no passwords, OTPs, bank details or stored profit)` };
     if (!/^[A-Za-z][A-Za-z0-9_]{0,40}$/.test(k)) return { error: `Bad field name "${k}"` };
     data[k] = v;

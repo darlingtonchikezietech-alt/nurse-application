@@ -111,6 +111,7 @@ legend{font:600 13px var(--body);text-transform:uppercase;letter-spacing:.05em;c
 .money b{display:block;font:700 18px var(--display);font-variant-numeric:tabular-nums}
 .hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;grid-column:1/-1;font-size:13px}
 .hist li{display:flex;gap:8px;justify-content:space-between;border-bottom:1px dashed var(--line);padding-bottom:4px}
+.pwrow{display:flex;gap:6px}.pwrow input{flex:1;min-width:0}
 .stepper{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 @media (max-width:640px){
   .filters select{flex:1 1 140px}
@@ -234,7 +235,9 @@ legend{font:600 13px var(--body);text-transform:uppercase;letter-spacing:.05em;c
       <div class="f"><label for="nmcnAppId">Application / tracking ID</label><input id="nmcnAppId" name="nmcnAppId"></div>
       <div class="f"><label for="rrr">Remita RRR</label><input id="rrr" name="rrr" inputmode="numeric"></div>
       <div class="f"><label for="nmcnPaidOn">Date paid to NMCN</label><input id="nmcnPaidOn" name="nmcnPaidOn" type="date"></div>
-      <div class="f full sub">Never store passwords here. Keep portal passwords in your password manager.</div>
+      <div class="f full"><label for="portalPw">Temporary portal password</label>
+<div class="pwrow"><input id="portalPw" type="password" autocomplete="new-password" placeholder="Type to set or replace"><button class="btn sm" type="button" id="btnPwShow">Show</button><button class="btn sm" type="button" id="btnPwCopy">Copy</button><button class="btn sm danger" type="button" id="btnPwClear">Clear</button></div>
+<span class="sub" id="pwHint">Encrypted. Only you can see it, never agents. Cleared automatically when the nurse is Delivered or Cancelled.</span></div>
     </fieldset>
 
     <fieldset>
@@ -411,7 +414,7 @@ legend{font:600 13px var(--body);text-transform:uppercase;letter-spacing:.05em;c
       var s=stageOf(a.status), p=profitOf(a), due=n(a.charged)-n(a.received);
       return '<tr class="item" data-id="'+esc(a.id)+'">'+
         '<td><div class="name">'+esc(a.fullName||"(no name)")+'</div><div class="sub">'+esc(a.phone||"")+(a.registrationNo?' · '+esc(a.registrationNo):'')+'</div><div class="sub mono">'+esc(a.ref||"")+'</div></td>'+
-        '<td><span class="tag">'+esc(typeOf(a.requestType))+'</span>'+(a.category?' <span class="tag">'+esc(a.category)+'</span>':'')+'</td>'+
+        '<td><span class="tag">'+esc(typeOf(a.requestType))+'</span>'+(a.category?' <span class="tag">'+esc(a.category)+'</span>':'')+(a.hasPortalPassword?' <span class="tag">Pw saved</span>':'')+'</td>'+
         '<td><span class="pill '+s.c+'">'+esc(s.t)+'</span></td>'+
         '<td class="num">'+naira(a.received)+(due>0?'<div class="sub neg">owes '+naira(due)+'</div>':'')+'</td>'+
         '<td class="num hide-sm">'+naira(n(a.nmcnFee)+n(a.otherCosts))+'</td>'+
@@ -443,10 +446,14 @@ legend{font:600 13px var(--body);text-transform:uppercase;letter-spacing:.05em;c
     $("sheetRef").textContent = a ? (a.ref||"") : "Reference is created when you save";
     $("btnDelete").style.visibility = a ? "visible":"hidden";
     renderHist(); updateMoney(); updateNext();
+$("portalPw").value=""; $("portalPw").dataset.revealed=""; $("portalPw").type="password"; $("btnPwShow").textContent="Show";
+var hasPw = !!(a && a.hasPortalPassword);
+$("btnPwCopy").disabled = !hasPw; $("btnPwClear").disabled = !hasPw;
+$("portalPw").placeholder = hasPw ? "Saved •••••• (type to replace)" : (a ? "Type to set" : "Type to set (saved with the nurse)");
     $("sheet").classList.add("open"); $("scrim").classList.add("open");
     setTimeout(function(){$("fullName").focus()},50);
   }
-  function closeSheets(){$("sheet").classList.remove("open");$("setSheet").classList.remove("open");$("scrim").classList.remove("open");editing=null}
+  function closeSheets(){$("portalPw").value="";$("portalPw").type="password";$("sheet").classList.remove("open");$("setSheet").classList.remove("open");$("scrim").classList.remove("open");editing=null}
   function renderHist(){
     $("hist").innerHTML = draftHistory.length ? draftHistory.slice().reverse().map(function(h){return '<li><span>'+esc(stageOf(h.status).t)+(h.note?' — '+esc(h.note):'')+'</span><span class="sub">'+fmtDate(h.at)+(h.by?' · '+esc(h.by):'')+'</span></li>'}).join("") : '<li class="sub">Status changes will be logged here.</li>';
   }
@@ -477,7 +484,7 @@ legend{font:600 13px var(--body);text-transform:uppercase;letter-spacing:.05em;c
     if(!$("fullName").value.trim()){toast("Enter the nurse's full name");$("fullName").focus();return}
     var old = editing ? apps.find(function(x){return x.id===editing}) : null;
     var body = old ? JSON.parse(JSON.stringify(old)) : {};
-    delete body.id;
+    delete body.id; delete body.hasPortalPassword; delete body.portalPasswordSetAt;
     FIELDS.forEach(function(f){var v=$(f).value; body[f] = NUMS[f] ? (v===""?null:n(v)) : v.trim()});
     body.docs={}; DOCS.forEach(function(d){body.docs[d.k]=$("doc_"+d.k).checked});
     var nowIso=new Date().toISOString();
@@ -488,6 +495,7 @@ legend{font:600 13px var(--body);text-transform:uppercase;letter-spacing:.05em;c
     saving=true; this.disabled=true;
     try{
       var saved = old ? await api("PUT","/api/records/"+encodeURIComponent(editing), body) : await api("POST","/api/records", body);
+var newPw=$("portalPw").value; if(newPw && $("portalPw").dataset.revealed!=="1"){ await api("PUT","/api/secret/"+encodeURIComponent(saved.id), {password:newPw}); $("portalPw").value="" }
       toast(old?"Saved":"Nurse added · "+saved.ref); closeSheets(); await load();
     }catch(e){ toast(e.message||"Could not save. Check your connection and try again.") }finally{saving=false;this.disabled=false}
   });
@@ -508,7 +516,31 @@ legend{font:600 13px var(--body);text-transform:uppercase;letter-spacing:.05em;c
   ["q","fType","fStatus","fPay"].forEach(function(id){$(id).addEventListener("input",function(){if(id==="fStatus") filterStage=this.value; render()})});
 
   // ---- Settings ----
-  var PKEYS=Object.keys(DEFAULT_PRICES);
+  $("portalPw").addEventListener("input",function(){this.dataset.revealed=""});
+async function fetchPw(){ if(!editing) return null; var j=await api("GET","/api/secret/"+encodeURIComponent(editing)); return j.password }
+$("btnPwShow").addEventListener("click",async function(){
+var el=$("portalPw");
+if(el.type==="text"){ el.type="password"; if(el.dataset.revealed==="1"){el.value="";el.dataset.revealed=""} this.textContent="Show"; return }
+if(!el.value){ try{ var pw=await fetchPw(); if(!pw){toast("No password saved");return} el.value=pw; el.dataset.revealed="1" }catch(e){toast(e.message);return} }
+el.type="text"; this.textContent="Hide";
+});
+$("btnPwCopy").addEventListener("click",function(){
+if(!editing) return;
+var p = fetchPw().then(function(pw){ if(!pw) throw new Error("No password saved"); return pw });
+var done=function(){ toast("Password copied. Paste it into the NMCN login.") }, fail=function(e){ toast((e&&e.message)||"Copy was blocked by the browser") };
+try{
+if(window.ClipboardItem && navigator.clipboard && navigator.clipboard.write){
+navigator.clipboard.write([new ClipboardItem({"text/plain": p.then(function(pw){return new Blob([pw],{type:"text/plain"})})})]).then(done,fail);
+} else { p.then(function(pw){ return navigator.clipboard.writeText(pw) }).then(done,fail) }
+}catch(e){ fail(e) }
+});
+$("btnPwClear").addEventListener("click",async function(){
+if(!editing) return;
+var b=this; if(b.dataset.armed!=="1"){b.dataset.armed="1";b.textContent="Tap to confirm";setTimeout(function(){b.dataset.armed="";b.textContent="Clear"},3000);return}
+b.dataset.armed="";b.textContent="Clear";
+try{ await api("DELETE","/api/secret/"+encodeURIComponent(editing)); toast("Password cleared"); $("portalPw").value=""; $("btnPwCopy").disabled=true; b.disabled=true; await load() }catch(e){ toast(e.message) }
+});
+var PKEYS=Object.keys(DEFAULT_PRICES);
   $("btnSettings").addEventListener("click",function(){PKEYS.forEach(function(k){$("s_"+k).value=prices[k]==null?"":prices[k]}); $("setSheet").classList.add("open"); $("scrim").classList.add("open")});
   $("setClose").addEventListener("click",closeSheets);
   $("setSave").addEventListener("click",async function(){

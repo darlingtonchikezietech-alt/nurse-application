@@ -10,6 +10,7 @@ Vercel project: `nmcn-card-desk` (team darton-tech), root directory `app`.
 | `ADMIN_PASSWORD` | Dashboard sign-in password |
 | `SESSION_SECRET` | Signs the login cookie (change it to sign everyone out) |
 | `AGENT_API_KEY` | Bearer key for AI agents |
+| `PORTAL_SECRET_KEY` | AES-256-GCM key (32 bytes, base64) encrypting nurses' temporary portal passwords. Changing it makes saved passwords unreadable. |
 
 ## API (all require sign-in cookie or `Authorization: Bearer $AGENT_API_KEY`)
 | Method | Path | Does |
@@ -21,5 +22,8 @@ Vercel project: `nmcn-card-desk` (team darton-tech), root directory `app`.
 | PUT | `/api/records/:id` | Replace whole record |
 | DELETE | `/api/records/:id` | Delete |
 | GET/PUT | `/api/config` | Fees & prices |
+| GET/PUT/DELETE | `/api/secret/:id` | Nurse's temporary NMCN portal password. **Signed-in operator only; agents get 403.** Stored encrypted in `secrets/<id>.json`, never in the record. Cleared automatically when status becomes `delivered` or `cancelled`, or the record is deleted. |
 
 Agents should send `X-Agent-Name: <name>` so changes are attributed. Fields named like passwords, OTPs, BVN, card numbers, or `profit` are rejected.
+
+Records carry only `hasPortalPassword` and `portalPasswordSetAt` (server-managed; clients cannot set them).
