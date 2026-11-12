@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NMCN Card Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* Layout: summary band (money + pipeline) on top, then a filterable work queue; a slide-over sheet edits one nurse's file. */
+:root{
+  --bg:#f4f6f5; --surface:#ffffff; --ink:#15211e; --muted:#5d6b67; --line:#dde3e1;
+  --accent:#0d6b5a; --accent-ink:#ffffff; --accent-soft:#e2f1ed;
+  --good:#1f7a3f; --warn:#a35f00; --bad:#b3261e; --info:#2f5fa7;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, monospace;
+  --r:10px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1513; --surface:#17201d; --ink:#e6eeeb; --muted:#93a39e; --line:#2a3632;
+    --accent:#3fbfa3; --accent-ink:#06231d; --accent-soft:#163a32;
+    --good:#5fcf88; --warn:#e3a54a; --bad:#f2827a; --info:#86aef0;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1513; --surface:#17201d; --ink:#e6eeeb; --muted:#93a39e; --line:#2a3632;
+  --accent:#3fbfa3; --accent-ink:#06231d; --accent-soft:#163a32;
+  --good:#5fcf88; --warn:#e3a54a; --bad:#f2827a; --info:#86aef0;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 80px;display:flex;flex-direction:column;gap:20px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand h1{font:700 26px/1.1 var(--display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--bad)}
+.btn.sm{padding:5px 10px;font-size:13px}
+.notice{border:1px solid var(--line);background:var(--surface);border-left:4px solid var(--warn);border-radius:var(--r);padding:10px 14px;font-size:14px}
+.notice[hidden]{display:none}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.kpi .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.kpi .v{font:700 24px/1.2 var(--display);font-variant-numeric:tabular-nums;margin-top:4px}
+.kpi .s{font-size:12px;color:var(--muted);margin-top:2px}
+.kpi.profit{border-color:var(--accent);background:var(--accent-soft)}
+.kpi.profit .v{color:var(--accent)}
+
+section.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+section.card h2{font:600 17px/1.2 var(--display);margin:0 0 12px}
+.pipe{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.stage{flex:1 0 96px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer;background:var(--bg);text-align:left}
+.stage .n{font:700 20px/1 var(--display);font-variant-numeric:tabular-nums}
+.stage .t{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.25}
+.stage.on{border-color:var(--accent);background:var(--accent-soft)}
+.stage .bar{height:3px;border-radius:2px;margin-bottom:8px;background:var(--line)}
+
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.filters input,.filters select{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px}
+.filters input{flex:1 1 220px}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+tr.item{cursor:pointer}
+tr.item:hover td{background:var(--bg)}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mono{font-family:var(--mono);font-size:12px}
+.name{font-weight:600}
+.sub{font-size:12px;color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;white-space:nowrap;border:1px solid currentColor}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.c-new{color:var(--info)} .c-work{color:var(--warn)} .c-done{color:var(--good)} .c-stop{color:var(--bad)} .c-idle{color:var(--muted)}
+.tag{font-size:11px;border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:var(--muted);white-space:nowrap}
+.neg{color:var(--bad)}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;z-index:10}
+.scrim.open{display:block}
+.sheet{position:fixed;top:0;right:0;bottom:0;width:min(640px,100%);background:var(--surface);z-index:11;transform:translateX(100%);transition:transform .2s ease;display:flex;flex-direction:column;border-left:1px solid var(--line)}
+.sheet.open{transform:none}
+@media (prefers-reduced-motion: reduce){.sheet{transition:none}}
+.sheet header{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.sheet header h3{font:600 18px/1.2 var(--display);margin:0}
+.sheet .body{overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:18px;flex:1}
+.sheet footer{padding:12px 16px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+fieldset{border:0;padding:0;margin:0;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+legend{font:600 13px var(--body);text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-bottom:8px;grid-column:1/-1}
+.f{display:flex;flex-direction:column;gap:4px}
+.f.full{grid-column:1/-1}
+.f label{font-size:12px;color:var(--muted);font-weight:500}
+.f input,.f select,.f textarea{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;width:100%}
+.f textarea{min-height:70px;resize:vertical}
+.checks{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px}
+.checks label{display:flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer}
+.money{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--bg);border-radius:8px;padding:10px;font-size:13px}
+.money b{display:block;font:700 18px var(--display);font-variant-numeric:tabular-nums}
+.hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;grid-column:1/-1;font-size:13px}
+.hist li{display:flex;gap:8px;justify-content:space-between;border-bottom:1px dashed var(--line);padding-bottom:4px}
+.stepper{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+@media (max-width:640px){
+  .filters select{flex:1 1 140px}
+  table thead{display:none}
+  table,tbody{display:block}
+  tr.item{display:grid;grid-template-columns:1fr auto;gap:6px 12px;padding:12px 0;border-bottom:1px solid var(--line)}
+  tr.item td{border:0;padding:0;background:none!important}
+  tr.item td:nth-child(1){grid-column:1;grid-row:1}
+  tr.item td:nth-child(2){grid-column:1;grid-row:2}
+  tr.item td:nth-child(3){grid-column:2;grid-row:1;text-align:right}
+  tr.item td:nth-child(4){grid-column:1;grid-row:3;text-align:left}
+  tr.item td:nth-child(6){grid-column:2;grid-row:2 / span 2;align-self:end}
+  tr.item td:nth-child(4)::before{content:"Collected ";color:var(--muted);font-size:12px}
+  tr.item td:nth-child(6)::before{content:"Profit";display:block;color:var(--muted);font-size:12px;font-weight:400}
+  td.empty{display:block}
+}
+@media (max-width:520px){fieldset{grid-template-columns:1fr}.money{grid-template-columns:1fr 1fr}.hide-sm{display:none}}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:14px;z-index:20;display:none}
+.toast.show{display:block}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>NMCN Card Desk</h1>
+      <p>Licence renewals, new licences and change-of-name requests: intake to delivery.</p>
+    </div>
+    <div class="row">
+      <button class="btn" id="btnSettings" type="button">Fees &amp; prices</button>
+      <button class="btn" id="btnCsv" type="button">Copy CSV</button>
+      <button class="btn primary" id="btnNew" type="button">+ New nurse</button>
+    </div>
+  </header>
+
+  <div class="notice" id="notice" hidden></div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <section class="card">
+    <h2>Pipeline</h2>
+    <div class="pipe" id="pipe"></div>
+  </section>
+
+  <section class="card">
+    <h2>Work queue</h2>
+    <div class="filters">
+      <input id="q" type="search" placeholder="Search name, phone, reg. no., RRR, ref">
+      <select id="fType" aria-label="Request type"></select>
+      <select id="fStatus" aria-label="Status"></select>
+      <select id="fPay" aria-label="Client payment">
+        <option value="">Any payment</option>
+        <option value="owing">Client still owes</option>
+        <option value="paid">Fully paid</option>
+      </select>
+    </div>
+    <div class="tbl">
+      <table>
+        <thead><tr>
+          <th>Nurse</th><th>Request</th><th>Status</th>
+          <th class="num">Collected</th><th class="num hide-sm">NMCN + costs</th><th class="num">Profit</th>
+          <th class="hide-sm">Updated</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<div class="scrim" id="scrim"></div>
+
+<aside class="sheet" id="sheet" aria-label="Nurse file">
+  <header>
+    <div><h3 id="sheetTitle">New nurse</h3><div class="sub mono" id="sheetRef"></div></div>
+    <button class="btn sm" id="btnClose" type="button">Close</button>
+  </header>
+  <form class="body" id="form" autocomplete="off">
+    <fieldset>
+      <legend>Request</legend>
+      <div class="f"><label for="requestType">Request type</label><select id="requestType" name="requestType"></select></div>
+      <div class="f"><label for="status">Status</label><select id="status" name="status"></select></div>
+      <div class="stepper"><button class="btn sm" type="button" id="btnNext">Move to next stage</button><span class="sub" id="nextHint"></span></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Nurse details</legend>
+      <div class="f full"><label for="fullName">Full name (as on NMCN record)</label><input id="fullName" name="fullName" required></div>
+      <div class="f"><label for="phone">Phone</label><input id="phone" name="phone" inputmode="tel"></div>
+      <div class="f"><label for="whatsapp">WhatsApp</label><input id="whatsapp" name="whatsapp" inputmode="tel"></div>
+      <div class="f"><label for="email">Email</label><input id="email" name="email" type="email"></div>
+      <div class="f"><label for="gender">Gender</label><select id="gender" name="gender"><option value=""></option><option>Female</option><option>Male</option></select></div>
+      <div class="f"><label for="dob">Date of birth</label><input id="dob" name="dob" type="date"></div>
+      <div class="f"><label for="stateOfOrigin">State of origin</label><input id="stateOfOrigin" name="stateOfOrigin"></div>
+      <div class="f"><label for="residenceState">State of residence</label><input id="residenceState" name="residenceState"></div>
+      <div class="f"><label for="workplace">Workplace / hospital</label><input id="workplace" name="workplace"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Professional record</legend>
+      <div class="f"><label for="category">Cadre</label><select id="category" name="category"><option value=""></option><option>RN</option><option>RM</option><option>RN/RM</option><option>RPHN</option><option>RPN</option><option>Other</option></select></div>
+      <div class="f"><label for="registrationNo">NMCN registration no.</label><input id="registrationNo" name="registrationNo"></div>
+      <div class="f"><label for="licenceNo">Current licence no.</label><input id="licenceNo" name="licenceNo"></div>
+      <div class="f"><label for="licenceExpiry">Licence expiry date</label><input id="licenceExpiry" name="licenceExpiry" type="date"></div>
+      <div class="f"><label for="yearsDefaulted">Years in default</label><input id="yearsDefaulted" name="yearsDefaulted" type="number" min="0" step="1"></div>
+      <div class="f"><label for="newName">New name (change of name only)</label><input id="newName" name="newName"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Documents received</legend>
+      <div class="checks" id="docChecks"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>NMCN portal</legend>
+      <div class="f"><label for="portalUsername">Portal username / email</label><input id="portalUsername" name="portalUsername"></div>
+      <div class="f"><label for="nmcnAppId">Application / tracking ID</label><input id="nmcnAppId" name="nmcnAppId"></div>
+      <div class="f"><label for="rrr">Remita RRR</label><input id="rrr" name="rrr" inputmode="numeric"></div>
+      <div class="f"><label for="nmcnPaidOn">Date paid to NMCN</label><input id="nmcnPaidOn" name="nmcnPaidOn" type="date"></div>
+      <div class="f full sub">Never store passwords here. Keep portal passwords in your password manager.</div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Money</legend>
+      <div class="f"><label for="charged">Agreed price to nurse (₦)</label><input id="charged" name="charged" type="number" min="0" step="50"></div>
+      <div class="f"><label for="received">Collected from nurse so far (₦)</label><input id="received" name="received" type="number" min="0" step="50"></div>
+      <div class="f"><label for="nmcnFee">Paid to NMCN (₦)</label><input id="nmcnFee" name="nmcnFee" type="number" min="0" step="1"></div>
+      <div class="f"><label for="otherCosts">Other costs: printing, delivery, data (₦)</label><input id="otherCosts" name="otherCosts" type="number" min="0" step="50"></div>
+      <div class="stepper"><button class="btn sm" type="button" id="btnFee">Fill NMCN fee from fee table</button><span class="sub" id="feeHint"></span></div>
+      <div class="money" id="moneyBox"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Printing &amp; delivery</legend>
+      <div class="f"><label for="deliveryMethod">Delivery method</label><select id="deliveryMethod" name="deliveryMethod"><option value=""></option><option>Hand delivery</option><option>Courier / dispatch</option><option>Client pick-up</option><option>NMCN state office pick-up</option></select></div>
+      <div class="f"><label for="courier">Courier / rider</label><input id="courier" name="courier"></div>
+      <div class="f full"><label for="deliveryAddress">Delivery address</label><input id="deliveryAddress" name="deliveryAddress"></div>
+      <div class="f"><label for="trackingNo">Tracking / waybill no.</label><input id="trackingNo" name="trackingNo"></div>
+      <div class="f"><label for="deliveredAt">Delivered on</label><input id="deliveredAt" name="deliveredAt" type="date"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Notes &amp; history</legend>
+      <div class="f full"><label for="notes">Notes (queries from NMCN, client requests)</label><textarea id="notes" name="notes"></textarea></div>
+      <ul class="hist" id="hist"></ul>
+    </fieldset>
+  </form>
+  <footer>
+    <button class="btn danger" type="button" id="btnDelete">Delete</button>
+    <div class="row"><button class="btn" type="button" id="btnCancel">Cancel</button><button class="btn primary" type="button" id="btnSave">Save</button></div>
+  </footer>
+</aside>
+
+<aside class="sheet" id="setSheet" aria-label="Fees and prices">
+  <header><h3>Fees &amp; prices</h3><button class="btn sm" id="setClose" type="button">Close</button></header>
+  <form class="body" id="setForm">
+    <p class="sub" style="margin:0">Official NMCN fees change from time to time. Check the amount shown on the portal / Remita before paying, then update it here. These defaults only pre-fill new files.</p>
+    <fieldset>
+      <legend>Official NMCN fees (₦)</legend>
+      <div class="f"><label for="s_renewalFee">Licence renewal</label><input id="s_renewalFee" type="number" min="0"></div>
+      <div class="f"><label for="s_penaltyPerYear">Penalty per year in default</label><input id="s_penaltyPerYear" type="number" min="0"></div>
+      <div class="f"><label for="s_newLicenceFee">New licence (first licensing)</label><input id="s_newLicenceFee" type="number" min="0"></div>
+      <div class="f"><label for="s_changeOfNameFee">Change of name</label><input id="s_changeOfNameFee" type="number" min="0"></div>
+    </fieldset>
+    <fieldset>
+      <legend>Your prices (₦)</legend>
+      <div class="f"><label for="s_priceRenewal">Charge for renewal</label><input id="s_priceRenewal" type="number" min="0"></div>
+      <div class="f"><label for="s_priceNew">Charge for new licence</label><input id="s_priceNew" type="number" min="0"></div>
+      <div class="f"><label for="s_priceChange">Charge for change of name</label><input id="s_priceChange" type="number" min="0"></div>
+      <div class="f"><label for="s_otherCosts">Typical other costs per card</label><input id="s_otherCosts" type="number" min="0"></div>
+    </fieldset>
+  </form>
+  <footer><span></span><button class="btn primary" type="button" id="setSave">Save prices</button></footer>
+</aside>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+  "use strict";
+  // ---- Shared vocabulary (kept identical in the repo's brain/data-schema.md) ----
+  var STAGES = [
+    {k:"intake",        t:"New request",            c:"c-new"},
+    {k:"awaiting_docs", t:"Awaiting documents",     c:"c-work"},
+    {k:"docs_ready",    t:"Documents complete",     c:"c-work"},
+    {k:"profile_done",  t:"Portal profile ready",   c:"c-work"},
+    {k:"applied",       t:"Application submitted",  c:"c-work"},
+    {k:"nmcn_paid",     t:"Paid to NMCN",           c:"c-work"},
+    {k:"approved",      t:"Approved by NMCN",       c:"c-work"},
+    {k:"printed",       t:"Card printed",           c:"c-work"},
+    {k:"out_for_delivery", t:"Out for delivery",    c:"c-work"},
+    {k:"delivered",     t:"Delivered",              c:"c-done"}
+  ];
+  var SIDE = [
+    {k:"query",     t:"Query from NMCN", c:"c-stop"},
+    {k:"on_hold",   t:"On hold",         c:"c-idle"},
+    {k:"cancelled", t:"Cancelled",       c:"c-idle"}
+  ];
+  var ALL = STAGES.concat(SIDE);
+  var TYPES = [
+    {k:"renewal", t:"Licence renewal"},
+    {k:"new", t:"New licence"},
+    {k:"change_of_name", t:"Change of name"}
+  ];
+  var DOCS = [
+    {k:"passport", t:"Passport photo"},
+    {k:"oldLicence", t:"Old licence / card"},
+    {k:"certificate", t:"Registration certificate"},
+    {k:"idCard", t:"Valid ID (NIN etc.)"},
+    {k:"cpd", t:"CPD / MCPDP evidence"},
+    {k:"marriageCert", t:"Marriage cert / affidavit"},
+    {k:"signature", t:"Signature"}
+  ];
+  var DEFAULT_PRICES = {renewalFee:13125, penaltyPerYear:6562, newLicenceFee:0, changeOfNameFee:0, priceRenewal:0, priceNew:0, priceChange:0, otherCosts:0};
+
+  var $ = function(id){return document.getElementById(id)};
+  var stageOf = function(k){for(var i=0;i<ALL.length;i++) if(ALL[i].k===k) return ALL[i]; return {k:k,t:k||"Unknown",c:"c-idle"}};
+  var typeOf = function(k){for(var i=0;i<TYPES.length;i++) if(TYPES[i].k===k) return TYPES[i].t; return k||"—"};
+  var n = function(v){v=Number(v);return isFinite(v)?v:0};
+  var naira = function(v){var x=Math.round(n(v));return (x<0?"−₦":"₦")+Math.abs(x).toLocaleString("en-NG")};
+  var esc = function(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]})};
+  var profitOf = function(a){return n(a.received)-n(a.nmcnFee)-n(a.otherCosts)};
+  var fmtDate = function(iso){if(!iso) return "—"; var d=new Date(iso); if(isNaN(d)) return esc(iso); return d.toLocaleDateString("en-NG",{day:"numeric",month:"short"})};
+  function toast(msg){var t=$("toast");t.textContent=msg;t.classList.add("show");clearTimeout(toast._t);toast._t=setTimeout(function(){t.classList.remove("show")},2600)}
+  function notice(msg){var el=$("notice"); if(!msg){el.hidden=true;return} el.textContent=msg; el.hidden=false}
+
+  // ---- State ----
+  var apps = [];            // [{id, ...data}]
+  var prices = Object.assign({}, DEFAULT_PRICES);
+  var db = null, user = null, canWrite = true, me = "dashboard";
+  var filterStage = "";
+  var editing = null;       // id or null for new
+  var draftHistory = [];
+
+  // ---- Static selects ----
+  function fillSelect(el, list, first){el.innerHTML=(first?'<option value="">'+first+'</option>':"")+list.map(function(o){return '<option value="'+o.k+'">'+esc(o.t)+'</option>'}).join("")}
+  fillSelect($("fType"), TYPES, "All requests");
+  fillSelect($("fStatus"), ALL, "All statuses");
+  fillSelect($("requestType"), TYPES);
+  fillSelect($("status"), ALL);
+  $("docChecks").innerHTML = DOCS.map(function(d){return '<label><input type="checkbox" id="doc_'+d.k+'"> '+esc(d.t)+'</label>'}).join("");
+
+  // ---- Render ----
+  function render(){
+    var live = apps.filter(function(a){return a.status!=="cancelled"});
+    var collected=0, nmcn=0, other=0, owed=0, active=0, delivered=0, month=0;
+    var now=new Date(), ym=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
+    live.forEach(function(a){
+      collected+=n(a.received); nmcn+=n(a.nmcnFee); other+=n(a.otherCosts);
+      owed+=Math.max(0,n(a.charged)-n(a.received));
+      if(a.status==="delivered"){delivered++; if((a.deliveredAt||a.updatedAt||"").slice(0,7)===ym) month+=profitOf(a)} else active++;
+    });
+    var profit=collected-nmcn-other;
+    $("kpis").innerHTML = [
+      {l:"Nurses in progress", v:active, s:delivered+" delivered · "+apps.length+" total"},
+      {l:"Collected from nurses", v:naira(collected), s:naira(owed)+" still owed"},
+      {l:"Paid to NMCN", v:naira(nmcn), s:"Official fees"},
+      {l:"Other costs", v:naira(other), s:"Printing, delivery, data"},
+      {l:"Profit", v:naira(profit), s:naira(month)+" on cards delivered this month", cls:"profit"}
+    ].map(function(k){return '<div class="kpi '+(k.cls||"")+'"><div class="l">'+k.l+'</div><div class="v">'+(typeof k.v==="number"?k.v:k.v)+'</div><div class="s">'+k.s+'</div></div>'}).join("");
+
+    var counts={}; apps.forEach(function(a){counts[a.status]=(counts[a.status]||0)+1});
+    var max=Math.max.apply(null,[1].concat(ALL.map(function(s){return counts[s.k]||0})));
+    $("pipe").innerHTML = ALL.map(function(s){
+      var c=counts[s.k]||0;
+      return '<button type="button" class="stage '+(filterStage===s.k?"on":"")+'" data-stage="'+s.k+'"><div class="bar"><div style="height:3px;border-radius:2px;width:'+Math.round(c/max*100)+'%;background:currentColor" class="'+s.c+'"></div></div><div class="n">'+c+'</div><div class="t">'+esc(s.t)+'</div></button>';
+    }).join("");
+
+    var q=$("q").value.trim().toLowerCase(), ft=$("fType").value, fs=$("fStatus").value||filterStage, fp=$("fPay").value;
+    var rows = apps.filter(function(a){
+      if(ft && a.requestType!==ft) return false;
+      if(fs && a.status!==fs) return false;
+      var due=n(a.charged)-n(a.received);
+      if(fp==="owing" && !(due>0)) return false;
+      if(fp==="paid" && due>0) return false;
+      if(q){var hay=[a.ref,a.fullName,a.phone,a.whatsapp,a.email,a.registrationNo,a.licenceNo,a.rrr,a.nmcnAppId].join(" ").toLowerCase(); if(hay.indexOf(q)<0) return false}
+      return true;
+    }).sort(function(a,b){return String(b.updatedAt||"").localeCompare(String(a.updatedAt||""))});
+
+    if(!rows.length){
+      $("rows").innerHTML='<tr><td colspan="7" class="empty">'+(apps.length?"No nurse matches these filters.":"No nurses yet. Tap <b>+ New nurse</b> to log the first request.")+'</td></tr>';
+      return;
+    }
+    $("rows").innerHTML = rows.map(function(a){
+      var s=stageOf(a.status), p=profitOf(a), due=n(a.charged)-n(a.received);
+      return '<tr class="item" data-id="'+esc(a.id)+'">'+
+        '<td><div class="name">'+esc(a.fullName||"(no name)")+'</div><div class="sub">'+esc(a.phone||"")+(a.registrationNo?' · '+esc(a.registrationNo):'')+'</div><div class="sub mono">'+esc(a.ref||"")+'</div></td>'+
+        '<td><span class="tag">'+esc(typeOf(a.requestType))+'</span>'+(a.category?' <span class="tag">'+esc(a.category)+'</span>':'')+'</td>'+
+        '<td><span class="pill '+s.c+'">'+esc(s.t)+'</span></td>'+
+        '<td class="num">'+naira(a.received)+(due>0?'<div class="sub neg">owes '+naira(due)+'</div>':'')+'</td>'+
+        '<td class="num hide-sm">'+naira(n(a.nmcnFee)+n(a.otherCosts))+'</td>'+
+        '<td class="num '+(p<0?"neg":"")+'"><b>'+naira(p)+'</b></td>'+
+        '<td class="hide-sm sub">'+fmtDate(a.updatedAt)+(a.updatedBy?'<div>'+esc(a.updatedBy)+'</div>':'')+'</td></tr>';
+    }).join("");
+  }
+
+  // ---- Sheet ----
+  var FIELDS=["requestType","status","fullName","phone","whatsapp","email","gender","dob","stateOfOrigin","residenceState","workplace","category","registrationNo","licenceNo","licenceExpiry","yearsDefaulted","newName","portalUsername","nmcnAppId","rrr","nmcnPaidOn","charged","received","nmcnFee","otherCosts","deliveryMethod","courier","deliveryAddress","trackingNo","deliveredAt","notes"];
+  var NUMS={yearsDefaulted:1,charged:1,received:1,nmcnFee:1,otherCosts:1};
+
+  function suggestedFee(type, years){
+    if(type==="renewal") return n(prices.renewalFee)+n(prices.penaltyPerYear)*n(years);
+    if(type==="new") return n(prices.newLicenceFee);
+    if(type==="change_of_name") return n(prices.changeOfNameFee);
+    return 0;
+  }
+  function suggestedPrice(type){return type==="renewal"?n(prices.priceRenewal):type==="new"?n(prices.priceNew):n(prices.priceChange)}
+
+  function openSheet(id){
+    editing=id||null;
+    var a = id ? apps.find(function(x){return x.id===id}) : null;
+    var data = a || {requestType:"renewal", status:"intake", charged:suggestedPrice("renewal")||"", otherCosts:n(prices.otherCosts)||"", docs:{}};
+    FIELDS.forEach(function(f){var el=$(f); if(el) el.value = data[f]==null?"":data[f]});
+    DOCS.forEach(function(d){$("doc_"+d.k).checked=!!(data.docs&&data.docs[d.k])});
+    draftHistory = (data.history||[]).slice();
+    $("sheetTitle").textContent = a ? (a.fullName||"Nurse file") : "New nurse";
+    $("sheetRef").textContent = a ? (a.ref||"") : "Reference is created when you save";
+    $("btnDelete").style.visibility = a ? "visible":"hidden";
+    renderHist(); updateMoney(); updateNext();
+    $("sheet").classList.add("open"); $("scrim").classList.add("open");
+    setTimeout(function(){$("fullName").focus()},50);
+  }
+  function closeSheets(){$("sheet").classList.remove("open");$("setSheet").classList.remove("open");$("scrim").classList.remove("open");editing=null}
+  function renderHist(){
+    $("hist").innerHTML = draftHistory.length ? draftHistory.slice().reverse().map(function(h){return '<li><span>'+esc(stageOf(h.status).t)+(h.note?' — '+esc(h.note):'')+'</span><span class="sub">'+fmtDate(h.at)+(h.by?' · '+esc(h.by):'')+'</span></li>'}).join("") : '<li class="sub">Status changes will be logged here.</li>';
+  }
+  function updateMoney(){
+    var a={received:$("received").value,nmcnFee:$("nmcnFee").value,otherCosts:$("otherCosts").value};
+    var due=n($("charged").value)-n(a.received), p=profitOf(a), exp=n($("charged").value)-n(a.nmcnFee)-n(a.otherCosts);
+    $("moneyBox").innerHTML='<div>Profit so far<b class="'+(p<0?"neg":"")+'">'+naira(p)+'</b></div><div>Expected when fully paid<b>'+naira(exp)+'</b></div><div>Nurse still owes<b class="'+(due>0?"neg":"")+'">'+naira(Math.max(0,due))+'</b></div>';
+    var sf=suggestedFee($("requestType").value,$("yearsDefaulted").value);
+    $("feeHint").textContent = sf ? "Fee table says "+naira(sf)+". Confirm on Remita before paying." : "Set official fees under Fees & prices.";
+  }
+  function updateNext(){
+    var cur=$("status").value, i=STAGES.findIndex(function(s){return s.k===cur});
+    var nxt = i>=0 && i<STAGES.length-1 ? STAGES[i+1] : (i<0 ? null : null);
+    $("btnNext").disabled = !nxt; $("nextHint").textContent = nxt ? "→ "+nxt.t : (i===STAGES.length-1?"Final stage reached":"Pick a pipeline stage to continue");
+    $("btnNext").dataset.next = nxt?nxt.k:"";
+  }
+  $("btnNext").addEventListener("click",function(){var k=this.dataset.next;if(k){$("status").value=k;updateNext()}});
+  $("status").addEventListener("change",updateNext);
+  ["charged","received","nmcnFee","otherCosts","yearsDefaulted","requestType"].forEach(function(f){$(f).addEventListener("input",updateMoney)});
+  $("requestType").addEventListener("change",function(){if(!editing && !$("charged").value){var sp=suggestedPrice(this.value); if(sp) $("charged").value=sp} updateMoney()});
+  $("btnFee").addEventListener("click",function(){var sf=suggestedFee($("requestType").value,$("yearsDefaulted").value); if(sf){$("nmcnFee").value=sf; updateMoney()} else toast("Add the official fee under Fees & prices first")});
+
+  function newRef(){var d=new Date();return "NC-"+String(d.getFullYear()).slice(2)+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0")+"-"+Math.random().toString(36).slice(2,6).toUpperCase()}
+
+  var saving=false;
+  $("btnSave").addEventListener("click",async function(){
+    if(saving) return;
+    if(!$("fullName").value.trim()){toast("Enter the nurse's full name");$("fullName").focus();return}
+    if(!db){toast("Saving is unavailable in this view");return}
+    var old = editing ? apps.find(function(x){return x.id===editing}) : null;
+    var body = old ? JSON.parse(JSON.stringify(old)) : {};
+    delete body.id;
+    FIELDS.forEach(function(f){var v=$(f).value; body[f] = NUMS[f] ? (v===""?null:n(v)) : v.trim()});
+    body.docs={}; DOCS.forEach(function(d){body.docs[d.k]=$("doc_"+d.k).checked});
+    var nowIso=new Date().toISOString();
+    if(!old){body.ref=newRef(); body.createdAt=nowIso; body.source="dashboard"}
+    if(!old || old.status!==body.status){draftHistory.push({status:body.status, at:nowIso, by:me})}
+    body.history=draftHistory;
+    body.updatedAt=nowIso; body.updatedBy=me;
+    saving=true; this.disabled=true;
+    try{
+      var ref = old ? db.collection("applications").doc(editing) : db.collection("applications").doc();
+      await ref.set(body);
+      toast(old?"Saved":"Nurse added · "+body.ref); closeSheets();
+    }catch(e){
+      if(e&&e.code==="invalid_argument"){canWrite=false;notice("You can view this desk but not change it. Ask the owner for Contributor access.")}
+      else if(e&&e.code==="quota_exceeded") notice("Storage is full: "+(e.message||"")+" Delete old cancelled files to make room.");
+      else toast("Could not save. Check your connection and try again.");
+    }finally{saving=false;this.disabled=false}
+  });
+  $("btnDelete").addEventListener("click",function(){
+    var b=this;
+    if(b.dataset.armed!=="1"){b.dataset.armed="1";b.textContent="Tap again to delete";setTimeout(function(){b.dataset.armed="";b.textContent="Delete"},3000);return}
+    b.dataset.armed="";b.textContent="Delete";
+    if(!db||!editing) return;
+    db.collection("applications").doc(editing).delete().then(function(){toast("Deleted");closeSheets()}).catch(function(){toast("Could not delete")});
+  });
+  $("btnNew").addEventListener("click",function(){openSheet(null)});
+  $("btnClose").addEventListener("click",closeSheets);
+  $("btnCancel").addEventListener("click",closeSheets);
+  $("scrim").addEventListener("click",closeSheets);
+  document.addEventListener("keydown",function(e){if(e.key==="Escape") closeSheets()});
+  $("rows").addEventListener("click",function(e){var tr=e.target.closest("tr.item"); if(tr) openSheet(tr.dataset.id)});
+  $("pipe").addEventListener("click",function(e){var b=e.target.closest(".stage"); if(!b) return; filterStage = filterStage===b.dataset.stage?"":b.dataset.stage; $("fStatus").value=filterStage; render()});
+  ["q","fType","fStatus","fPay"].forEach(function(id){$(id).addEventListener("input",function(){if(id==="fStatus") filterStage=this.value; render()})});
+
+  // ---- Settings ----
+  var PKEYS=Object.keys(DEFAULT_PRICES);
+  $("btnSettings").addEventListener("click",function(){PKEYS.forEach(function(k){$("s_"+k).value=prices[k]==null?"":prices[k]}); $("setSheet").classList.add("open"); $("scrim").classList.add("open")});
+  $("setClose").addEventListener("click",closeSheets);
+  $("setSave").addEventListener("click",async function(){
+    if(!db){toast("Saving is unavailable in this view");return}
+    var body={}; PKEYS.forEach(function(k){body[k]=n($("s_"+k).value)}); body.updatedAt=new Date().toISOString(); body.updatedBy=me;
+    try{await db.doc("config/prices").set(body); toast("Prices saved"); closeSheets()}catch(e){toast("Could not save prices")}
+  });
+
+  // ---- CSV ----
+  $("btnCsv").addEventListener("click",function(){
+    var cols=["ref","fullName","phone","email","requestType","category","registrationNo","licenceNo","status","charged","received","nmcnFee","otherCosts","profit","rrr","nmcnAppId","deliveredAt","updatedAt"];
+    var lines=[cols.join(",")].concat(apps.map(function(a){return cols.map(function(c){var v=c==="profit"?profitOf(a):a[c];v=v==null?"":String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(",")}));
+    var txt=lines.join("\n");
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(function(){toast("CSV copied. Paste into Sheets or Excel.")},function(){toast("Copy was blocked by the browser")})} else toast("Copy is not available here");
+  });
+
+  render();
+
+  // ---- Data ----
+  (async function(){
+    if(!window.claude||!window.claude.use){notice("Open this page from claude.ai to load and save records.");return}
+    var timer=setTimeout(function(){notice("Records can't be reached yet. Check your connection; this page keeps trying.")},10000);
+    try{ user = await window.claude.use("user"); }catch(e){}
+    try{ db = await window.claude.use("db"); }catch(e){ db=null }
+    if(!db){clearTimeout(timer);notice("Sign in to claude.ai to load and save records.");return}
+    try{ if(user&&user.can){var cw=await user.can("data.write"); if(cw===false){canWrite=false;notice("You can view this desk but not change it.")}} }catch(e){}
+    db.collection("applications").onSnapshot(function(snap){
+      if(!snap.metadata.fromCache){clearTimeout(timer); if(canWrite) notice("")}
+      apps = snap.docs.map(function(d){return Object.assign({id:d.id}, d.data())});
+      render();
+    },function(err){clearTimeout(timer); notice("Records stopped updating ("+(err&&err.code||"error")+"). Reopen the page to reconnect.")});
+    db.doc("config/prices").onSnapshot(function(s){prices = Object.assign({}, DEFAULT_PRICES, s.exists?s.data():{}); render()},function(){});
+  })();
+})();
+</script>
+</body>
+</html>
