@@ -17,13 +17,17 @@ brain/
   data-schema.md                record fields and status keys
   portal-notes.md               living log of what we learn about the portal
   glossary.md
+app/                          Vercel app: dashboard + API (production)
 dashboard/
-  index.html                    source of the Card Desk dashboard
+  index.html                    Claude-artifact version of the dashboard
 CLAUDE.md                       instructions any agent reads on opening the repo
 ```
 
 ## The dashboard
 
+Production: https://nmcn-card-desk.vercel.app (Vercel project `nmcn-card-desk`, source in `app/`, password login, private Blob storage). See `app/README.md`.
+
+Earlier Claude-artifact version: 
 Live at https://claude.ai/artifact/BTaV3G2rgRofPiDubX6HMv (private to the owner until shared). One record per nurse; shows collected, paid to NMCN, other costs and profit, plus a pipeline of stages. Agents update it through the artifact database (see `references/dashboard-records.md`).
 
 ## Pipeline

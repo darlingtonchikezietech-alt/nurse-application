@@ -2,7 +2,7 @@
 
 ## Primary: the Vercel app (production)
 
-- **URL:** https://nmcn-card-desk-darton-tech.vercel.app
+- **URL:** https://nmcn-card-desk.vercel.app
 - **Auth for agents:** `Authorization: Bearer $AGENT_API_KEY` (ask the operator to provide it as an environment variable; never paste it into chat or files) and `X-Agent-Name: <your name>`.
 - **API:** see `app/README.md`. Typical stage update:
 
