@@ -1,6 +1,24 @@
 # Reading and writing Card Desk records
 
-The dashboard is a Claude artifact with a shared database.
+## Primary: the Vercel app (production)
+
+- **URL:** https://nmcn-card-desk-darton-tech.vercel.app
+- **Auth for agents:** `Authorization: Bearer $AGENT_API_KEY` (ask the operator to provide it as an environment variable; never paste it into chat or files) and `X-Agent-Name: <your name>`.
+- **API:** see `app/README.md`. Typical stage update:
+
+```bash
+curl -X PATCH "$CARD_DESK_URL/api/records/<id>" \
+  -H "Authorization: Bearer $AGENT_API_KEY" -H "X-Agent-Name: nmcn-processor" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"nmcn_paid","rrr":"1234-5678-9012","nmcnFee":19824,"nmcnPaidOn":"2026-11-12","note":"Paid via Remita"}'
+```
+The server stamps `updatedAt`/`updatedBy` and appends the history entry when `status` changes.
+
+Find a record: `GET /api/records?ref=NC-...` or `?q=<name or phone>`.
+
+## Legacy: the Claude artifact version
+
+The original dashboard is a Claude artifact with a shared database. Use it only if the operator says so.
 
 - **Dashboard:** https://claude.ai/artifact/BTaV3G2rgRofPiDubX6HMv
 - **Artifact slug:** `54b15c09-4cf4-4886-b941-4eaab53750e5`
